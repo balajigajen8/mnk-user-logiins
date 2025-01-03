@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mnk-user-logins
+spec:
+  selector:
+    app: mnk-user-logins
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9000
+  type: LoadBalancer
