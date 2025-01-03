@@ -73,17 +73,21 @@ Resources:
                   - 'autoscaling:DescribeLaunchConfigurations'
                 Resource: '*'
 
-  # Launch Configuration for Worker Nodes (EKS node configuration)
-  EKSNodeGroupLaunchConfig:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  # Launch Template for Worker Nodes (EKS node configuration using Launch Template)
+  EKSNodeGroupLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      ImageId: ami-xxxxxxxx  # Replace with the correct EKS-optimized AMI for your region
-      InstanceType: t3.medium
-      SecurityGroups:
-        - sg-044b4b6bf5141af7f  # Reusing existing security group
-      IamInstanceProfile: arn:aws:iam::650251721226:instance-profile/EKSWorkerNodeInstanceProfile  # IAM instance profile for worker nodes
+      LaunchTemplateName: laravel-eks-launch-template
+      VersionDescription: "v1"
+      LaunchTemplateData:
+        ImageId: ami-xxxxxxxx  # Replace with the correct EKS-optimized AMI for your region
+        InstanceType: t3.medium
+        SecurityGroupIds:
+          - sg-044b4b6bf5141af7f  # Reusing existing security group
+        IamInstanceProfile: arn:aws:iam::650251721226:instance-profile/EKSWorkerNodeInstanceProfile  # IAM instance profile for worker nodes
+        KeyName: your-key-pair-name  # Optional: Add your EC2 key pair name if needed
 
-  # Auto Scaling Group for EKS Worker Nodes
+  # Auto Scaling Group for EKS Worker Nodes using Launch Template
   EKSNodeGroup:
     Type: AWS::EKS::Nodegroup
     Properties:
@@ -95,11 +99,12 @@ Resources:
       NodeRole: !GetAtt EKSWorkerNodeRole.Arn  # IAM role for worker nodes
       ScalingConfig:
         MinSize: 1
-        MaxSize: 2
+        MaxSize: 3
         DesiredSize: 2
-      InstanceTypes:
-        - t2.micro
-      DiskSize: 10
+      LaunchTemplate:
+        LaunchTemplateName: !Ref EKSNodeGroupLaunchTemplate
+        Version: !GetAtt EKSNodeGroupLaunchTemplate.LatestVersionNumber
+      DiskSize: 20
 
 Outputs:
   # EKS Cluster Name
