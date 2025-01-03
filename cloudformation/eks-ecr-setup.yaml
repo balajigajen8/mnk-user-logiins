@@ -7,24 +7,6 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: laravel-app
-      LifecyclePolicy:
-        LifecyclePolicyText: |
-          {
-            "rules": [
-              {
-                "rulePriority": 1,
-                "description": "Expire untagged images after 30 days",
-                "selection": {
-                  "tagStatus": "untagged",
-                  "countType": "imageCountMoreThan",
-                  "countNumber": 5
-                },
-                "action": {
-                  "type": "expire"
-                }
-              }
-            ]
-          }
 
   # IAM Role for EKS Cluster
   EKSClusterRole:
@@ -37,33 +19,9 @@ Resources:
             Principal:
               Service: "eks.amazonaws.com"
             Action: "sts:AssumeRole"
-      Policies:
-        - PolicyName: "EKSClusterPolicy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "ec2:Describe*"
-                  - "ec2:CreateSecurityGroup"
-                  - "iam:PassRole"
-                  - "eks:Describe*"
-                Resource: "*"
-
-  # EKS Cluster
-  EKSCluster:
-    Type: AWS::EKS::Cluster
-    Properties:
-      Name: mnk-user-logins-cluster
-      RoleArn: !GetAtt EKSClusterRole.Arn
-      ResourcesVpcConfig:
-        SubnetIds:
-          - subnet-0fdc7d89e2b460ee1  # Replace with your actual Subnet IDs
-          - subnet-0b0a0583d221d317b
-        SecurityGroupIds:
-          - sg-044b4b6bf5141af7f  # Replace with your actual Security Group ID
-        EndpointPublicAccess: true
-        EndpointPrivateAccess: false
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
 
   # IAM Role for EKS Worker Nodes
   EKSWorkerNodeRole:
@@ -81,6 +39,21 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
 
+  # EKS Cluster
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: mnk-user-logins-cluster
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds:
+          - subnet-0fdc7d89e2b460ee1  # Replace with your actual Subnet IDs
+          - subnet-0b0a0583d221d317b
+        SecurityGroupIds:
+          - sg-044b4b6bf5141af7f  # Replace with your actual Security Group ID
+        EndpointPublicAccess: true
+        EndpointPrivateAccess: false
+
   # EKS Node Group
   EKSNodeGroup:
     Type: AWS::EKS::Nodegroup
@@ -96,7 +69,7 @@ Resources:
         - subnet-0fdc7d89e2b460ee1
         - subnet-0b0a0583d221d317b
       InstanceTypes:
-        - t3.medium  # Update as per your requirement
+        - t3.medium
       AmiType: AL2_x86_64
       NodeRole: !Ref EKSWorkerNodeRole
 
