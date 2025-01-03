@@ -1,15 +1,32 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EKS Cluster and ECR Setup for Laravel App
+Description: "CloudFormation Template for EKS Cluster, ECR Repository, and IAM Roles for Laravel CI/CD"
 
 Resources:
-
-  # ECR Repository for Laravel App
-  ECRRepository:
+  # ECR Repository
+  LaravelECRRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: mnk-user-logins-repo
+      RepositoryName: laravel-app
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Expire untagged images after 30 days",
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 5
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
 
-  # EKS Cluster Role
+  # IAM Role for EKS Cluster
   EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
@@ -27,9 +44,10 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "eks:DescribeCluster"
-                  - "eks:ListClusters"
+                  - "ec2:Describe*"
+                  - "ec2:CreateSecurityGroup"
                   - "iam:PassRole"
+                  - "eks:Describe*"
                 Resource: "*"
 
   # EKS Cluster
@@ -40,9 +58,12 @@ Resources:
       RoleArn: !GetAtt EKSClusterRole.Arn
       ResourcesVpcConfig:
         SubnetIds:
-          - subnet-0fdc7d89e2b460ee1  # Replace with your actual subnet ID
+          - subnet-0fdc7d89e2b460ee1  # Replace with your actual Subnet IDs
+          - subnet-0b0a0583d221d317b
         SecurityGroupIds:
-          - sg-044b4b6bf5141af7f # Replace with your actual Security Group ID
+          - sg-044b4b6bf5141af7f  # Replace with your actual Security Group ID
+        EndpointPublicAccess: true
+        EndpointPrivateAccess: false
 
   # IAM Role for EKS Worker Nodes
   EKSWorkerNodeRole:
@@ -55,30 +76,39 @@ Resources:
             Principal:
               Service: "ec2.amazonaws.com"
             Action: "sts:AssumeRole"
-      Policies:
-        - PolicyName: "EKSWorkerNodePolicy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "ec2:DescribeInstances"
-                  - "ec2:DescribeSecurityGroups"
-                  - "ec2:DescribeSubnets"
-                  - "eks:DescribeCluster"
-                  - "iam:PassRole"
-                  - "autoscaling:DescribeAutoScalingGroups"
-                  - "cloudwatch:PutMetricData"
-                  - "logs:CreateLogStream"
-                  - "logs:PutLogEvents"
-                  - "logs:DescribeLogStreams"
-                Resource: "*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+
+  # EKS Node Group
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodegroupName: "laravel-node-group"
+      ScalingConfig:
+        MinSize: 1
+        MaxSize: 1
+        DesiredSize: 1
+      DiskSize: 20
+      Subnets:
+        - subnet-0fdc7d89e2b460ee1
+        - subnet-0b0a0583d221d317b
+      InstanceTypes:
+        - t3.medium  # Update as per your requirement
+      AmiType: AL2_x86_64
+      NodeRole: !Ref EKSWorkerNodeRole
 
 Outputs:
-  ECRRepositoryURI:
-    Value: !GetAtt ECRRepository.RepositoryUri
-    Description: URI of the ECR Repository
-
   EKSClusterName:
     Value: !Ref EKSCluster
-    Description: EKS Cluster Name
+    Description: "EKS Cluster Name for Laravel App"
+
+  NodeGroupName:
+    Value: !Ref EKSNodeGroup
+    Description: "Node Group Name for Laravel App"
+
+  ECRRepositoryURI:
+    Value: !GetAtt LaravelECRRepository.RepositoryUri
+    Description: "ECR Repository URI for Laravel App"
