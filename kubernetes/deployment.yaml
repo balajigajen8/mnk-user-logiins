@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mnk-user-logins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mnk-user-logins
+  template:
+    metadata:
+      labels:
+        app: mnk-user-logins
+    spec:
+      containers:
+      - name: mnk-user-logins
+        image: 650251721226.dkr.ecr.ap-south-1.amazonaws.com/mnk-user-logins-repo:latest
+        ports:
+        - containerPort: 9000
