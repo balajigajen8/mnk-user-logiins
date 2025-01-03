@@ -2,7 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: "CloudFormation Template for EKS Cluster, ECR Repository, and IAM Roles for Laravel CI/CD"
 
 Resources:
-
   # ECR Repository
   LaravelECRRepository:
     Type: AWS::ECR::Repository
@@ -44,12 +43,12 @@ Resources:
   EKSCluster:
     Type: AWS::EKS::Cluster
     Properties:
-      Name: "mnk-user-logins-cluster"
+      Name: mnk-user-logins-cluster
       RoleArn: !GetAtt EKSClusterRole.Arn
       ResourcesVpcConfig:
         SubnetIds:
-          - subnet-0fdc7d89e2b460ee1  # Replace with your actual Subnet ID
-          - subnet-0b0a0583d221d317b   # Replace with your actual Subnet ID
+          - subnet-0fdc7d89e2b460ee1  # Replace with your actual Subnet IDs
+          - subnet-0b0a0583d221d317b
         SecurityGroupIds:
           - sg-044b4b6bf5141af7f  # Replace with your actual Security Group ID
         EndpointPublicAccess: true
@@ -65,13 +64,13 @@ Resources:
         MinSize: 1
         MaxSize: 1
         DesiredSize: 1
-      DiskSize: 20
+      DiskSize: 10
       Subnets:
         - subnet-0fdc7d89e2b460ee1
         - subnet-0b0a0583d221d317b
       InstanceTypes:
         - t3.medium
-      AmiType: AL2_x86_64
+      AmiType: ami-053b12d3152c0cc71
       NodeRole: !Ref EKSWorkerNodeRole
 
 Outputs:
