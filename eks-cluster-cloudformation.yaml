@@ -13,18 +13,18 @@ Resources:
         - Key: Name
           Value: LaravelEKS
 
-  # Subnet
+  # Subnet in ap-south-1b
   Subnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       CidrBlock: "172.31.0.0/20"
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      AvailabilityZone: "ap-south-1b"
       Tags:
         - Key: Name
           Value: LaravelEKS-Subnet
 
-  # EKS Node Security Group (New Resource)
+  # EKS Node Security Group (Updated)
   EKSNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -59,9 +59,9 @@ Resources:
       RoleArn: !GetAtt EKSClusterRole.Arn
       ResourcesVpcConfig:
         SubnetIds: 
-          - !Ref Subnet  # Referencing Subnet as an array
+          - !Ref Subnet  # Referencing the single subnet in ap-south-1b
         SecurityGroupIds: 
-          - !Ref EKSNodeSecurityGroup  # Referencing Security Group as an array
+          - sg-044b4b6bf5141af7f  # Referencing the existing security group directly
         EndpointPublicAccess: true
 
   # ECR Repository for Laravel App
