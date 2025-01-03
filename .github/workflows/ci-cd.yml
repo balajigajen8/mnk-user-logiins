@@ -1,0 +1,82 @@
+name: Laravel EKS CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Trigger on push to main branch
+  pull_request:
+    branches:
+      - main  # Trigger on pull request to main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the code
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step 2: Set up AWS CLI and credentials
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    # Step 3: Deploy CloudFormation Stack to Create EKS Cluster
+    - name: Deploy CloudFormation Stack for EKS
+      run: |
+        aws cloudformation create-stack \
+          --stack-name laravel-eks-stack \
+          --template-body file://eks-cluster-cloudformation.yaml \
+          --capabilities CAPABILITY_IAM
+
+    # Step 4: Wait for CloudFormation stack to complete
+    - name: Wait for CloudFormation Stack Creation
+      run: |
+        aws cloudformation wait stack-create-complete --stack-name laravel-eks-stack
+
+    # Step 5: Set up Docker
+    - name: Set up Docker
+      run: |
+        sudo apt-get install docker.io
+
+    # Step 6: Login to Amazon ECR
+    - name: Log in to Amazon ECR
+      run: |
+        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+    # Step 7: Build Docker image
+    - name: Build Docker image
+      run: |
+        docker build -t laravel-app .
+
+    # Step 8: Get ECR repository URI from CloudFormation output
+    - name: Get ECR URI
+      run: |
+        export ECR_URI=$(aws cloudformation describe-stacks --stack-name laravel-eks-stack --query "Stacks[0].Outputs[?OutputKey=='ECRRepositoryUri'].OutputValue" --output text)
+        echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+
+    # Step 9: Tag Docker image with ECR repository
+    - name: Tag Docker image
+      run: |
+        docker tag laravel-app:latest $ECR_URI:latest
+
+    # Step 10: Push Docker image to ECR
+    - name: Push Docker image to ECR
+      run: |
+        docker push $ECR_URI:latest
+
+    # Step 11: Set kubeconfig for EKS cluster
+    - name: Set kubeconfig
+      run: |
+        aws eks --region ${{ secrets.AWS_REGION }} update-kubeconfig --name laravel-eks-cluster
+
+    # Step 12: Deploy the Laravel app to EKS
+    - name: Apply Kubernetes Deployment
+      run: |
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl rollout status deployment/laravel-deployment
