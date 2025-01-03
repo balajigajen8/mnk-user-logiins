@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: EKS Cluster Setup with ECR for Laravel Application Deployment, including Worker Nodes
 
 Resources:
-  # EKS Cluster Role (using an existing IAM role)
+  # EKS Cluster Role (IAM role for EKS to interact with AWS services)
   EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
@@ -13,13 +13,25 @@ Resources:
             Principal:
               Service: 'eks.amazonaws.com'
             Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: EKSClusterPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeSecurityGroups'
+                  - 'ec2:DescribeSubnets'
+                  - 'eks:DescribeCluster'
+                Resource: '*'
 
   # EKS Cluster
   EKSCluster:
     Type: AWS::EKS::Cluster
     Properties:
       Name: laravel-eks-cluster
-      RoleArn: arn:aws:iam::650251721226:role/eksServiceRole  # Replace with your IAM role ARN
+      RoleArn: !GetAtt EKSClusterRole.Arn
       ResourcesVpcConfig:
         SubnetIds:
           - subnet-0fdc7d89e2b460ee1  # Replace with your existing subnet ID
@@ -34,7 +46,34 @@ Resources:
     Properties:
       RepositoryName: laravel-app-repo
 
-  # Launch Configuration for Worker Nodes
+  # IAM Role for Worker Nodes
+  EKSWorkerNodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'ec2.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: EKSWorkerNodePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'eks:DescribeCluster'
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeSecurityGroups'
+                  - 'ec2:DescribeSubnets'
+                  - 'autoscaling:DescribeAutoScalingGroups'
+                  - 'autoscaling:UpdateAutoScalingGroup'
+                  - 'autoscaling:DescribeLaunchConfigurations'
+                Resource: '*'
+
+  # Launch Configuration for Worker Nodes (EKS node configuration)
   EKSNodeGroupLaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
@@ -42,7 +81,7 @@ Resources:
       InstanceType: t3.medium
       SecurityGroups:
         - sg-044b4b6bf5141af7f  # Reusing existing security group
-      IamInstanceProfile: arn:aws:iam::650251721226:instance-profile/EKSWorkerNodeInstanceProfile  # IAM role for worker nodes
+      IamInstanceProfile: arn:aws:iam::650251721226:instance-profile/EKSWorkerNodeInstanceProfile  # IAM instance profile for worker nodes
 
   # Auto Scaling Group for EKS Worker Nodes
   EKSNodeGroup:
@@ -53,11 +92,14 @@ Resources:
       Subnets:
         - subnet-0fdc7d89e2b460ee1  # Subnet ID for node group
         - subnet-0b0a0583d221d317b  # Another subnet ID for node group
-      NodeRole: arn:aws:iam::650251721226:role/EKSWorkerNodeRole  # IAM role for worker nodes
+      NodeRole: !GetAtt EKSWorkerNodeRole.Arn  # IAM role for worker nodes
       ScalingConfig:
         MinSize: 1
-        MaxSize: 3
+        MaxSize: 2
         DesiredSize: 2
+      InstanceTypes:
+        - t2.micro
+      DiskSize: 10
 
 Outputs:
   # EKS Cluster Name
