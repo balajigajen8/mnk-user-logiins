@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EKS Cluster Setup with ECR for Laravel Application Deployment
+
+Resources:
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      Tags:
+        - Key: Name
+          Value: LaravelEKS
+
+  # Subnet
+  Subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.1.0/24"
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: LaravelEKS-Subnet
+
+  # EKS Cluster Role
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'eks.amazonaws.com'
+            Action: 'sts:AssumeRole'
+
+  # EKS Cluster
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: laravel-eks-cluster
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds:
+          - !Ref Subnet
+        SecurityGroupIds:
+          - !Ref EKSNodeSecurityGroup
+        EndpointPublicAccess: true
+
+  # ECR Repository for Laravel App
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: laravel-app-repo
+
+Outputs:
+  EKSClusterName:
+    Value: !Ref EKSCluster
+    Description: "EKS Cluster Name"
+  ECRRepositoryUri:
+    Value: !GetAtt ECRRepository.RepositoryUri
+    Description: "URI of the ECR repository"
