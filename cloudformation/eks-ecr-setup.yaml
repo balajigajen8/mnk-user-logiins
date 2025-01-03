@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EKS Cluster and ECR Setup for Laravel App
+
+Resources:
+
+  # ECR Repository for Laravel App
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: mnk-user-logins-repo
+
+  # EKS Cluster Role
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "eks.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "EKSClusterPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "eks:DescribeCluster"
+                  - "eks:ListClusters"
+                  - "iam:PassRole"
+                Resource: "*"
+
+  # EKS Cluster
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: mnk-user-logins-cluster
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds:
+          - subnet-0fdc7d89e2b460ee1  # Replace with your actual subnet ID
+        SecurityGroupIds:
+          - sg-044b4b6bf5141af7f # Replace with your actual Security Group ID
+
+  # IAM Role for EKS Worker Nodes
+  EKSWorkerNodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "EKSWorkerNodePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ec2:DescribeInstances"
+                  - "ec2:DescribeSecurityGroups"
+                  - "ec2:DescribeSubnets"
+                  - "eks:DescribeCluster"
+                  - "iam:PassRole"
+                  - "autoscaling:DescribeAutoScalingGroups"
+                  - "cloudwatch:PutMetricData"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                  - "logs:DescribeLogStreams"
+                Resource: "*"
+
+Outputs:
+  ECRRepositoryURI:
+    Value: !GetAtt ECRRepository.RepositoryUri
+    Description: URI of the ECR Repository
+
+  EKSClusterName:
+    Value: !Ref EKSCluster
+    Description: EKS Cluster Name
