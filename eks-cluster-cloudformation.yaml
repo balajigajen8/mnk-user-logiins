@@ -33,7 +33,7 @@ Resources:
     Type: AWS::EKS::Cluster
     Properties:
       Name: "simple-eks-cluster"
-      RoleArn: arn:aws:iam::650251721226:role/eksServiceRole # Replace with your EKS role ARN
+      RoleArn: !GetAtt EKSClusterRole.Arn  # Using intrinsic function to reference created IAM Role
       ResourcesVpcConfig:
         SubnetIds:
           - subnet-0fdc7d89e2b460ee1 # Replace with your subnet IDs
@@ -88,7 +88,7 @@ Resources:
         AmiId: ami-0a000743ba7b9d393  # Replace with the AMI ID you want to use
         KeyName: mnk  # Replace with your EC2 Key Pair name for SSH access
         IamInstanceProfile:
-          Arn: arn:aws:iam::650251721226:instance-profile/EKSWorkerNodeRole  # Replace with the correct role ARN
+          Arn: !GetAtt EKSWorkerNodeInstanceProfile.Arn  # Referencing the created Instance Profile
         SecurityGroups:
           - sg-044b4b6bf5141af7f  # Replace with your Security Group ID
         UserData: !Sub |
