@@ -80,12 +80,12 @@ Resources:
       LaunchTemplateName: laravel-eks-launch-template
       VersionDescription: "v1"
       LaunchTemplateData:
-        ImageId: ami-xxxxxxxx  # Replace with the correct EKS-optimized AMI for your region
-        InstanceType: t3.medium
+        ImageId: ami-0a000743ba7b9d393  # Replace with the correct EKS-optimized AMI for your region
+        InstanceType: t2.micro
         SecurityGroupIds:
           - sg-044b4b6bf5141af7f  # Reusing existing security group
         IamInstanceProfile: arn:aws:iam::650251721226:instance-profile/EKSWorkerNodeInstanceProfile  # IAM instance profile for worker nodes
-        KeyName: your-key-pair-name  # Optional: Add your EC2 key pair name if needed
+        KeyName: mnk  # Optional: Add your EC2 key pair name if needed
 
   # Auto Scaling Group for EKS Worker Nodes using Launch Template
   EKSNodeGroup:
@@ -99,12 +99,12 @@ Resources:
       NodeRole: !GetAtt EKSWorkerNodeRole.Arn  # IAM role for worker nodes
       ScalingConfig:
         MinSize: 1
-        MaxSize: 3
+        MaxSize: 2
         DesiredSize: 2
       LaunchTemplate:
         LaunchTemplateName: !Ref EKSNodeGroupLaunchTemplate
         Version: !GetAtt EKSNodeGroupLaunchTemplate.LatestVersionNumber
-      DiskSize: 20
+      DiskSize: 10
 
 Outputs:
   # EKS Cluster Name
