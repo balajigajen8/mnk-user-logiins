@@ -1,126 +1,124 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EKS Cluster Setup with ECR for Laravel Application Deployment, including Worker Nodes
+Description: EKS Cluster with One Node Group for Simpler Setup
 
 Resources:
-  # EKS Cluster Role (IAM role for EKS to interact with AWS services)
+  # IAM Role for EKS Cluster
   EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-          - Effect: 'Allow'
+          - Effect: "Allow"
             Principal:
-              Service: 'eks.amazonaws.com'
-            Action: 'sts:AssumeRole'
+              Service: "eks.amazonaws.com"
+            Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: EKSClusterPolicy
+        - PolicyName: "EKSClusterFullAccessPolicy"
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
-              - Effect: 'Allow'
+              - Effect: "Allow"
                 Action:
-                  - 'ec2:DescribeInstances'
-                  - 'ec2:DescribeSecurityGroups'
-                  - 'ec2:DescribeSubnets'
-                  - 'eks:DescribeCluster'
-                Resource: '*'
+                  - "eks:DescribeCluster"
+                  - "eks:ListClusters"
+                  - "ec2:DescribeSecurityGroups"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:DescribeVpcs"
+                  - "iam:PassRole"
+                Resource: "*"
 
   # EKS Cluster
   EKSCluster:
     Type: AWS::EKS::Cluster
     Properties:
-      Name: laravel-eks-cluster
-      RoleArn: !GetAtt EKSClusterRole.Arn
+      Name: "simple-eks-cluster"
+      RoleArn: arn:aws:iam::650251721226:role/eksServiceRole # Replace with your EKS role ARN
       ResourcesVpcConfig:
         SubnetIds:
-          - subnet-0fdc7d89e2b460ee1  # Replace with your existing subnet ID
-          - subnet-0b0a0583d221d317b  # Replace with another subnet ID
+          - subnet-0fdc7d89e2b460ee1 # Replace with your subnet IDs
         SecurityGroupIds:
-          - sg-044b4b6bf5141af7f  # Replace with your existing security group ID
-        EndpointPublicAccess: true  # Make the EKS API server publicly accessible
+          - sg-044b4b6bf5141af7f # Replace with your Security Group ID
+        EndpointPublicAccess: true
+        EndpointPrivateAccess: false
 
-  # ECR Repository for Laravel App
-  ECRRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: laravel-app-repo
-
-  # IAM Role for Worker Nodes
+  # Worker Node Role
   EKSWorkerNodeRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-          - Effect: 'Allow'
+          - Effect: "Allow"
             Principal:
-              Service: 'ec2.amazonaws.com'
-            Action: 'sts:AssumeRole'
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: EKSWorkerNodePolicy
+        - PolicyName: "EKSWorkerNodeFullAccessPolicy"
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
-              - Effect: 'Allow'
+              - Effect: "Allow"
                 Action:
-                  - 'eks:DescribeCluster'
-                  - 'ec2:DescribeInstances'
-                  - 'ec2:DescribeSecurityGroups'
-                  - 'ec2:DescribeSubnets'
-                  - 'autoscaling:DescribeAutoScalingGroups'
-                  - 'autoscaling:UpdateAutoScalingGroup'
-                  - 'autoscaling:DescribeLaunchConfigurations'
-                Resource: '*'
+                  - "ec2:DescribeInstances"
+                  - "ec2:DescribeSecurityGroups"
+                  - "ec2:DescribeSubnets"
+                  - "eks:DescribeCluster"
+                  - "iam:PassRole"
+                  - "autoscaling:DescribeAutoScalingGroups"
+                  - "cloudwatch:PutMetricData"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                  - "logs:DescribeLogStreams"
+                Resource: "*"
 
-  # IAM Instance Profile for Worker Nodes
+  # Instance Profile for Worker Nodes
   EKSWorkerNodeInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
         - !Ref EKSWorkerNodeRole
 
-  # Launch Template for Worker Nodes (EKS node configuration using Launch Template)
+  # Launch Template for Node Group
   EKSNodeGroupLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: laravel-eks-launch-template
-      VersionDescription: "v1"
       LaunchTemplateData:
-        ImageId: ami-0a000743ba7b9d393  # Using your specified AMI ID
-        InstanceType: t3.medium
-        SecurityGroupIds:
-          - sg-044b4b6bf5141af7f  # Reusing existing security group
+        InstanceType: t3.medium  # Choose your instance type
+        AmiId: ami-0a000743ba7b9d393  # Replace with the AMI ID you want to use
+        KeyName: mnk  # Replace with your EC2 Key Pair name for SSH access
         IamInstanceProfile:
-          Arn: !GetAtt EKSWorkerNodeInstanceProfile.Arn  # Correct IAM instance profile structure
-        KeyName: mnk  # Using the specified EC2 KeyPair name
+          Arn: arn:aws:iam::650251721226:instance-profile/EKSWorkerNodeRole  # Replace with the correct role ARN
+        SecurityGroups:
+          - sg-044b4b6bf5141af7f  # Replace with your Security Group ID
+        UserData: !Sub |
+          #!/bin/bash
+          /etc/eks/bootstrap.sh ${ClusterName}
 
-  # Auto Scaling Group for EKS Worker Nodes using Launch Template
+  # EKS Node Group
   EKSNodeGroup:
     Type: AWS::EKS::Nodegroup
     Properties:
       ClusterName: !Ref EKSCluster
-      NodegroupName: laravel-eks-nodegroup
+      NodegroupName: "simple-nodegroup"
       Subnets:
-        - subnet-0fdc7d89e2b460ee1  # Subnet ID for node group
-        - subnet-0b0a0583d221d317b  # Another subnet ID for node group
-      NodeRole: !GetAtt EKSWorkerNodeRole.Arn  # IAM role for worker nodes
+        - subnet-0fdc7d89e2b460ee1  # Replace with your subnet IDs
+        - subnet-0b0a0583d221d317b  # Replace with your subnet IDs
+      NodeRole: !Ref EKSWorkerNodeRole
       ScalingConfig:
         MinSize: 1
-        MaxSize: 1  # Set to 1 instance
-        DesiredSize: 1  # Set to 1 instance
+        MaxSize: 1
+        DesiredSize: 1  # Set this to 1 for a single node in the node group
       LaunchTemplate:
-        LaunchTemplateName: !Ref EKSNodeGroupLaunchTemplate
-        Version: !GetAtt EKSNodeGroupLaunchTemplate.LatestVersionNumber
-      DiskSize: 20
+        LaunchTemplateId: !Ref EKSNodeGroupLaunchTemplate
+      RemoteAccess:
+        Ec2SshKey: mnk  # Replace with your EC2 Key Pair name for SSH access
 
 Outputs:
-  # EKS Cluster Name
   EKSClusterName:
     Value: !Ref EKSCluster
     Description: "EKS Cluster Name"
 
-  # URI of the ECR repository
-  ECRRepositoryUri:
-    Value: !GetAtt ECRRepository.RepositoryUri
-    Description: "URI of the ECR repository"
+  NodeGroupName:
+    Value: !Ref EKSNodeGroup
+    Description: "Node Group Name"
