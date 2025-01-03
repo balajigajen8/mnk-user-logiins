@@ -12,7 +12,7 @@ Resources:
   EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: "mnk-user-logins-stack-EKSClusterRole"  # Reference pre-existing role by name (or ARN)
+      RoleName: "arn:aws:iam::650251721226:role/aws-service-role/eks.amazonaws.com/AWSServiceRoleForAmazonEKS"  # Reference pre-existing role by name (or ARN)
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -25,7 +25,7 @@ Resources:
   EKSWorkerNodeRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: "mnk-user-logins-stack-EKSWorkerNodeRole"  # Reference pre-existing role by name (or ARN)
+      RoleName: "arn:aws:iam::650251721226:role/EKSWorkerNodeRole"  # Reference pre-existing role by name (or ARN)
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
