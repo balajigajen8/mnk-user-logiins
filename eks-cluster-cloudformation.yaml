@@ -18,7 +18,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: "172.31.0.0/24"
+      CidrBlock: "172.31.0.0/20"
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
       Tags:
         - Key: Name
@@ -43,10 +43,8 @@ Resources:
       Name: laravel-eks-cluster
       RoleArn: !GetAtt EKSClusterRole.Arn
       ResourcesVpcConfig:
-        SubnetIds:
-          - !Ref Subnet
-        SecurityGroupIds:
-          - !Ref EKSNodeSecurityGroup
+        SubnetIds: subnet-0fdc7d89e2b460ee1
+        SecurityGroupIds: sg-044b4b6bf5141af7f
         EndpointPublicAccess: true
 
   # ECR Repository for Laravel App
