@@ -2,16 +2,17 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: "CloudFormation Template for EKS Cluster, ECR Repository, and IAM Roles for Laravel CI/CD"
 
 Resources:
-  # ECR Repository
+  # ECR Repository for Laravel app
   LaravelECRRepository:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: laravel-app
 
-  # IAM Role for EKS Cluster
+  # IAM Role for EKS Cluster (Use pre-existing role ARN)
   EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: "mnk-user-logins-stack-EKSClusterRole"  # Reference pre-existing role by name (or ARN)
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -19,14 +20,12 @@ Resources:
             Principal:
               Service: "eks.amazonaws.com"
             Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
-        - arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
 
-  # IAM Role for EKS Worker Nodes
+  # IAM Role for EKS Worker Nodes (Use pre-existing role ARN)
   EKSWorkerNodeRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: "mnk-user-logins-stack-EKSWorkerNodeRole"  # Reference pre-existing role by name (or ARN)
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -44,7 +43,7 @@ Resources:
     Type: AWS::EKS::Cluster
     Properties:
       Name: mnk-user-logins-cluster
-      RoleArn: !GetAtt EKSClusterRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/mnk-user-logins-stack-EKSClusterRole  # Referencing role by ARN
       ResourcesVpcConfig:
         SubnetIds:
           - subnet-0fdc7d89e2b460ee1  # Replace with your actual Subnet IDs
@@ -54,7 +53,7 @@ Resources:
         EndpointPublicAccess: true
         EndpointPrivateAccess: false
 
-  # EKS Node Group
+  # EKS Node Group (Use existing role for nodes)
   EKSNodeGroup:
     Type: AWS::EKS::Nodegroup
     Properties:
@@ -64,14 +63,14 @@ Resources:
         MinSize: 1
         MaxSize: 1
         DesiredSize: 1
-      DiskSize: 10
+      DiskSize: 20
       Subnets:
         - subnet-0fdc7d89e2b460ee1
         - subnet-0b0a0583d221d317b
       InstanceTypes:
         - t3.medium
-      AmiType: ami-053b12d3152c0cc71
-      NodeRole: !Ref EKSWorkerNodeRole
+      AmiType: AL2_x86_64
+      NodeRole: !Sub arn:aws:iam::${AWS::AccountId}:role/mnk-user-logins-stack-EKSWorkerNodeRole  # Referencing role by ARN
 
 Outputs:
   EKSClusterName:
