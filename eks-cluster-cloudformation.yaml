@@ -1,45 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EKS Cluster Setup with ECR for Laravel Application Deployment
+Description: EKS Cluster Setup with ECR for Laravel Application Deployment, including Worker Nodes
 
 Resources:
-  # VPC
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: "172.31.0.0/16"
-      EnableDnsSupport: "true"
-      EnableDnsHostnames: "true"
-      Tags:
-        - Key: Name
-          Value: LaravelEKS
-
-  # Subnet in ap-south-1b
-  Subnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: "172.31.0.0/20"
-      AvailabilityZone: "ap-south-1b"
-      Tags:
-        - Key: Name
-          Value: LaravelEKS-Subnet
-
-  # EKS Node Security Group (Updated)
-  EKSNodeSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: "Security group for EKS nodes"
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: '0'
-          ToPort: '65535'
-          CidrIp: "0.0.0.0/0"
-      Tags:
-        - Key: Name
-          Value: EKSNodeSecurityGroup
-
-  # EKS Cluster Role
+  # EKS Cluster Role (using an existing IAM role)
   EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
@@ -56,13 +19,14 @@ Resources:
     Type: AWS::EKS::Cluster
     Properties:
       Name: laravel-eks-cluster
-      RoleArn: !GetAtt EKSClusterRole.Arn
+      RoleArn: arn:aws:iam::650251721226:role/eksServiceRole  # Replace with your IAM role ARN
       ResourcesVpcConfig:
-        SubnetIds: 
-          - !Ref Subnet  # Referencing the single subnet in ap-south-1b
-        SecurityGroupIds: 
-          - sg-044b4b6bf5141af7f  # Referencing the existing security group directly
-        EndpointPublicAccess: true
+        SubnetIds:
+          - subnet-0fdc7d89e2b460ee1  # Replace with your existing subnet ID
+          - subnet-0b0a0583d221d317b  # Replace with another subnet ID
+        SecurityGroupIds:
+          - sg-044b4b6bf5141af7f  # Replace with your existing security group ID
+        EndpointPublicAccess: true  # Make the EKS API server publicly accessible
 
   # ECR Repository for Laravel App
   ECRRepository:
@@ -70,10 +34,38 @@ Resources:
     Properties:
       RepositoryName: laravel-app-repo
 
+  # Launch Configuration for Worker Nodes
+  EKSNodeGroupLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-xxxxxxxx  # Replace with the correct EKS-optimized AMI for your region
+      InstanceType: t3.medium
+      SecurityGroups:
+        - sg-044b4b6bf5141af7f  # Reusing existing security group
+      IamInstanceProfile: arn:aws:iam::650251721226:instance-profile/EKSWorkerNodeInstanceProfile  # IAM role for worker nodes
+
+  # Auto Scaling Group for EKS Worker Nodes
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodegroupName: laravel-eks-nodegroup
+      Subnets:
+        - subnet-0fdc7d89e2b460ee1  # Subnet ID for node group
+        - subnet-0b0a0583d221d317b  # Another subnet ID for node group
+      NodeRole: arn:aws:iam::650251721226:role/EKSWorkerNodeRole  # IAM role for worker nodes
+      ScalingConfig:
+        MinSize: 1
+        MaxSize: 3
+        DesiredSize: 2
+
 Outputs:
+  # EKS Cluster Name
   EKSClusterName:
     Value: !Ref EKSCluster
     Description: "EKS Cluster Name"
+
+  # URI of the ECR repository
   ECRRepositoryUri:
     Value: !GetAtt ECRRepository.RepositoryUri
     Description: "URI of the ECR repository"
