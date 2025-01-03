@@ -1,9 +1,7 @@
-FROM php:8.1-fpm
+# Base PHP image with FPM
+FROM php:8.2-fpm
 
-# Set working directory
-WORKDIR /var/www
-
-# Install system dependencies
+# Install required system dependencies
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -12,24 +10,31 @@ RUN apt-get update && apt-get install -y \
     unzip \
     git \
     curl \
+    libonig-dev \
+    libxml2-dev \
+    libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql gd
+    && docker-php-ext-install pdo_mysql mbstring zip gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Composer
+# Install Composer globally
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
-# Copy existing application directory contents
+# Set working directory
+WORKDIR /var/www
+
+# Copy the application code
 COPY . /var/www
 
-# Set permissions for storage and cache
-RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Set permissions for storage and bootstrap/cache
+RUN chmod -R 775 storage bootstrap/cache && \
+    chown -R www-data:www-data storage bootstrap/cache
 
-# Clear Composer cache
-RUN composer clear-cache
+# Install Laravel dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
-# Install application dependencies
-RUN composer install --no-interaction --prefer-dist --verbose
+# Expose the application port
+EXPOSE 8000
 
-# Expose port 9000 and start php-fpm server
-EXPOSE 9000
-CMD ["php-fpm"]
+# Start the Laravel application server
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
