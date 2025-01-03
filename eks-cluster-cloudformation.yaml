@@ -1,124 +1,130 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EKS Cluster with One Node Group for Simpler Setup
+Description: EKS Cluster for Laravel User Login System (mnk-user-logins)
 
 Resources:
-  # IAM Role for EKS Cluster
+
+  # EKS Cluster Role
   EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
-          - Effect: "Allow"
+          - Effect: 'Allow'
             Principal:
-              Service: "eks.amazonaws.com"
-            Action: "sts:AssumeRole"
+              Service: 'eks.amazonaws.com'
+            Action: 'sts:AssumeRole'
       Policies:
-        - PolicyName: "EKSClusterFullAccessPolicy"
+        - PolicyName: 'EKSClusterFullAccessPolicy'
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
-              - Effect: "Allow"
+              - Effect: 'Allow'
                 Action:
-                  - "eks:DescribeCluster"
-                  - "eks:ListClusters"
-                  - "ec2:DescribeSecurityGroups"
-                  - "ec2:DescribeSubnets"
-                  - "ec2:DescribeVpcs"
-                  - "iam:PassRole"
-                Resource: "*"
+                  - 'eks:DescribeCluster'
+                  - 'eks:ListClusters'
+                  - 'ec2:DescribeSecurityGroups'
+                  - 'ec2:DescribeSubnets'
+                  - 'ec2:DescribeVpcs'
+                  - 'iam:PassRole'
+                Resource: '*'
 
   # EKS Cluster
   EKSCluster:
     Type: AWS::EKS::Cluster
     Properties:
-      Name: "simple-eks-cluster"
-      RoleArn: !GetAtt EKSClusterRole.Arn  # Using intrinsic function to reference created IAM Role
+      Name: "mnk-user-logins-cluster"
+      RoleArn: arn:aws:iam::650251721226:role/eksServiceRole  # Replace with your EKS service role ARN
       ResourcesVpcConfig:
         SubnetIds:
-          - subnet-0fdc7d89e2b460ee1 # Replace with your subnet IDs
+          - subnet-0fdc7d89e2b460ee1  # Replace with your subnet IDs
         SecurityGroupIds:
-          - sg-044b4b6bf5141af7f # Replace with your Security Group ID
+          - sg-044b4b6bf5141af7f  # Replace with your Security Group ID
         EndpointPublicAccess: true
         EndpointPrivateAccess: false
+
+  # ECR Repository for Laravel App
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: "mnk-user-logins-repo"
 
   # Worker Node Role
   EKSWorkerNodeRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
-          - Effect: "Allow"
+          - Effect: 'Allow'
             Principal:
-              Service: "ec2.amazonaws.com"
-            Action: "sts:AssumeRole"
+              Service: 'ec2.amazonaws.com'
+            Action: 'sts:AssumeRole'
       Policies:
-        - PolicyName: "EKSWorkerNodeFullAccessPolicy"
+        - PolicyName: 'EKSWorkerNodeFullAccessPolicy'
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
-              - Effect: "Allow"
+              - Effect: 'Allow'
                 Action:
-                  - "ec2:DescribeInstances"
-                  - "ec2:DescribeSecurityGroups"
-                  - "ec2:DescribeSubnets"
-                  - "eks:DescribeCluster"
-                  - "iam:PassRole"
-                  - "autoscaling:DescribeAutoScalingGroups"
-                  - "cloudwatch:PutMetricData"
-                  - "logs:CreateLogStream"
-                  - "logs:PutLogEvents"
-                  - "logs:DescribeLogStreams"
-                Resource: "*"
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeSecurityGroups'
+                  - 'ec2:DescribeSubnets'
+                  - 'eks:DescribeCluster'
+                  - 'iam:PassRole'
+                  - 'autoscaling:DescribeAutoScalingGroups'
+                  - 'cloudwatch:PutMetricData'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogStreams'
+                Resource: '*'
 
-  # Instance Profile for Worker Nodes
-  EKSWorkerNodeInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Roles:
-        - !Ref EKSWorkerNodeRole
-
-  # Launch Template for Node Group
-  EKSNodeGroupLaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
-    Properties:
-      LaunchTemplateData:
-        InstanceType: t3.medium  # Choose your instance type
-        AmiId: ami-0a000743ba7b9d393  # Replace with the AMI ID you want to use
-        KeyName: mnk  # Replace with your EC2 Key Pair name for SSH access
-        IamInstanceProfile:
-          Arn: !GetAtt EKSWorkerNodeInstanceProfile.Arn  # Referencing the created Instance Profile
-        SecurityGroups:
-          - sg-044b4b6bf5141af7f  # Replace with your Security Group ID
-        UserData: !Sub |
-          #!/bin/bash
-          /etc/eks/bootstrap.sh ${ClusterName}
-
-  # EKS Node Group
+  # Node Group (EKS Worker Nodes)
   EKSNodeGroup:
     Type: AWS::EKS::Nodegroup
     Properties:
       ClusterName: !Ref EKSCluster
-      NodegroupName: "simple-nodegroup"
+      NodegroupName: "mnk-user-logins-nodegroup"
+      NodeRole: !Ref EKSWorkerNodeRole
       Subnets:
         - subnet-0fdc7d89e2b460ee1  # Replace with your subnet IDs
-        - subnet-0b0a0583d221d317b  # Replace with your subnet IDs
-      NodeRole: !Ref EKSWorkerNodeRole
       ScalingConfig:
         MinSize: 1
-        MaxSize: 1
-        DesiredSize: 1  # Set this to 1 for a single node in the node group
-      LaunchTemplate:
-        LaunchTemplateId: !Ref EKSNodeGroupLaunchTemplate
-      RemoteAccess:
-        Ec2SshKey: mnk  # Replace with your EC2 Key Pair name for SSH access
+        MaxSize: 2
+        DesiredSize: 2
+      InstanceTypes:
+        - t3.medium  # Modify based on your needs
+
+  # Kubernetes Deployment for Laravel App
+  LaravelAppDeployment:
+    Type: Custom::KubernetesManifest
+    Properties:
+      ServiceToken: arn:aws:lambda:ap-south-1:650251721226:function:mnk-user-logins  # Lambda function to manage kubectl
+      Manifest: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: mnk-user-logins
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: mnk-user-logins
+          template:
+            metadata:
+              labels:
+                app: mnk-user-logins
+            spec:
+              containers:
+                - name: laravel-app
+                  image: "650251721226.dkr.ecr.ap-south-1.amazonaws.com/mnk-user-logins-repo:latest"  # Replace with your ECR image URL
+                  ports:
+                    - containerPort: 80
 
 Outputs:
   EKSClusterName:
     Value: !Ref EKSCluster
     Description: "EKS Cluster Name"
-
-  NodeGroupName:
-    Value: !Ref EKSNodeGroup
-    Description: "Node Group Name"
+  ECRRepositoryUri:
+    Value: !GetAtt ECRRepository.RepositoryUri
+    Description: "URI of the ECR repository"
