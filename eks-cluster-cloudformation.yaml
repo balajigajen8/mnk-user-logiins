@@ -24,6 +24,21 @@ Resources:
         - Key: Name
           Value: LaravelEKS-Subnet
 
+  # EKS Node Security Group (New Resource)
+  EKSNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for EKS nodes"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '0'
+          ToPort: '65535'
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: EKSNodeSecurityGroup
+
   # EKS Cluster Role
   EKSClusterRole:
     Type: AWS::IAM::Role
@@ -43,8 +58,10 @@ Resources:
       Name: laravel-eks-cluster
       RoleArn: !GetAtt EKSClusterRole.Arn
       ResourcesVpcConfig:
-        SubnetIds: subnet-0fdc7d89e2b460ee1
-        SecurityGroupIds: sg-044b4b6bf5141af7f
+        SubnetIds: 
+          - !Ref Subnet  # Referencing Subnet as an array
+        SecurityGroupIds: 
+          - !Ref EKSNodeSecurityGroup  # Referencing Security Group as an array
         EndpointPublicAccess: true
 
   # ECR Repository for Laravel App
