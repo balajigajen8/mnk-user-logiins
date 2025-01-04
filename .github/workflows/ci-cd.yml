@@ -27,7 +27,7 @@ jobs:
         run: |
           aws cloudformation deploy \
             --stack-name mnk-user-logins-stack \
-            --template-file eks-ecr-setup.yaml \
+            --template-file cloudformation/eks-ecr-setup.yaml \
             --capabilities CAPABILITY_NAMED_IAM
 
   build-and-push:
