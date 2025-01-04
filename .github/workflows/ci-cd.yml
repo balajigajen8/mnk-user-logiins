@@ -63,6 +63,9 @@ jobs:
           docker push $IMAGE_URI:latest
           echo "Pushing Docker Image: $IMAGE_URI:$TIMESTAMP"  # Debugging log
           docker push $IMAGE_URI:$TIMESTAMP
+        env:
+          IMAGE_URI: "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
+          TIMESTAMP: ${{ env.TIMESTAMP }}
 
   deploy-to-eks:
     name: Deploy to EKS
