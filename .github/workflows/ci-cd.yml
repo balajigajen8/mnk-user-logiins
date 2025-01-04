@@ -51,20 +51,20 @@ jobs:
       - name: Build Docker Image
         run: |
           IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          DYNAMIC_NUMBER=$(date +%Y%m%d%H%M%S)  # Replace with your dynamic number logic if needed
           echo "Building Docker image: $IMAGE_URI:latest"
           docker build -t $IMAGE_URI:latest .
-          docker tag $IMAGE_URI:latest $IMAGE_URI:$TIMESTAMP
-          echo "Tagged Docker image: $IMAGE_URI:$TIMESTAMP"
+          docker tag $IMAGE_URI:latest $IMAGE_URI:$DYNAMIC_NUMBER
+          echo "Tagged Docker image: $IMAGE_URI:$DYNAMIC_NUMBER"
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+          echo "DYNAMIC_NUMBER=$DYNAMIC_NUMBER" >> $GITHUB_ENV
 
       - name: Push Docker Image to ECR
         run: |
           echo "Pushing Docker image: $IMAGE_URI:latest"
           docker push $IMAGE_URI:latest
-          echo "Pushing Docker image: $IMAGE_URI:$TIMESTAMP"
-          docker push $IMAGE_URI:$TIMESTAMP
+          echo "Pushing Docker image: $IMAGE_URI:$DYNAMIC_NUMBER"
+          docker push $IMAGE_URI:$DYNAMIC_NUMBER
 
   deploy-to-eks:
     name: Deploy to EKS
