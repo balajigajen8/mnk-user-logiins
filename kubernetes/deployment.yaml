@@ -13,7 +13,7 @@ spec:
         app: mnk-user-logins
     spec:
       containers:
-      - name: mnk-user-logins
-        image: 650251721226.dkr.ecr.ap-south-1.amazonaws.com/mnk-user-logins-repo:latest
-        ports:
-        - containerPort: 9000
+        - name: mnk-user-logins
+          image: <your-ecr-repo-uri>:latest
+          ports:
+            - containerPort: 9000
