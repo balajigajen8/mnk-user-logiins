@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
         - name: mnk-user-logins
-          image: <your-ecr-repo-uri>:latest
+          image: "${IMAGE_URI}"
           ports:
-            - containerPort: 9000
+            - containerPort: 80
