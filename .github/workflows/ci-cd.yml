@@ -72,7 +72,7 @@ jobs:
         uses: aws-actions/configure-kubeconfig@v2
         with:
           aws-region: ${{ env.AWS_REGION }}
-          cluster-name: ${{ secrets.EKS_CLUSTER_NAME }}
+          cluster-name: "MNKUserLoginsCluster" # Must match your cluster name
 
       - name: Deploy Laravel Application to EKS
         run: |
