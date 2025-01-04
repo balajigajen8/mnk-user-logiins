@@ -59,16 +59,13 @@ jobs:
 
       - name: Push Docker Image to ECR
         run: |
-          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          echo "Pushing Docker Image: $IMAGE_URI:latest"
+          echo "Pushing Docker Image: $IMAGE_URI:latest"  # Debugging log
           docker push $IMAGE_URI:latest
-          docker tag $IMAGE_URI:latest $IMAGE_URI:$TIMESTAMP
-          echo "Pushing Docker Image: $IMAGE_URI:$TIMESTAMP"
+          echo "Pushing Docker Image: $IMAGE_URI:$TIMESTAMP"  # Debugging log
           docker push $IMAGE_URI:$TIMESTAMP
         env:
-          IMAGE_URI: "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
-          TIMESTAMP: ${{ env.TIMESTAMP }}
+          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
 
   deploy-to-eks:
     name: Deploy to EKS
@@ -78,11 +75,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Configure kubectl
-        uses: aws-actions/configure-kubeconfig@v2
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          cluster-name: ${{ secrets.EKS_CLUSTER_NAME }}
+      - name: Configure kubectl using AWS CLI
+        run: |
+          aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
 
       - name: Deploy Laravel Application to EKS
         run: |
