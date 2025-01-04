@@ -31,15 +31,15 @@ Resources:
       ClusterName: !Ref EKSCluster
       ScalingConfig:
         MinSize: 1
-        MaxSize: 3
+        MaxSize: 2
         DesiredSize: 1
-      DiskSize: 20
+      DiskSize: 10
       Subnets:
         - subnet-0fdc7d89e2b460ee1
         - subnet-0b0a0583d221d317b
       InstanceTypes:
         - t3.medium
-      AmiType: AL2_x86_64
+      AmiType: ami-053b12d3152c0cc71
       NodeRole: arn:aws:iam::650251721226:role/EKSNodeRole  # Replace with your actual Node IAM Role ARN
 
 Outputs:
