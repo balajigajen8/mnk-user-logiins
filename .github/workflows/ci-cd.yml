@@ -51,14 +51,15 @@ jobs:
       - name: Build Docker Image
         run: |
           IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
           docker build -t $IMAGE_URI:latest .
-          docker tag $IMAGE_URI:latest $IMAGE_URI:$(date +%Y%m%d%H%M%S)
+          docker tag $IMAGE_URI:latest $IMAGE_URI:$TIMESTAMP
+          echo "IMAGE_URI=$IMAGE_URI:$TIMESTAMP" >> $GITHUB_ENV
 
       - name: Push Docker Image to ECR
         run: |
-          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
           docker push $IMAGE_URI:latest
-          docker push $IMAGE_URI:$(date +%Y%m%d%H%M%S)
+          docker push $IMAGE_URI:$TIMESTAMP
 
   deploy-to-eks:
     name: Deploy to EKS
@@ -72,7 +73,7 @@ jobs:
         uses: aws-actions/configure-kubeconfig@v2
         with:
           aws-region: ${{ env.AWS_REGION }}
-          cluster-name: "MNKUserLoginsCluster" # Must match your cluster name
+          cluster-name: ${{ secrets.EKS_CLUSTER_NAME }}
 
       - name: Deploy Laravel Application to EKS
         run: |
