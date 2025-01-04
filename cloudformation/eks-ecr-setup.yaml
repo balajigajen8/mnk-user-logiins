@@ -1,16 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an EKS cluster and ECR repository for MNK User Logins.
+
 Resources:
+  # IAM Role for EKS Cluster
+  EKSClusterRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::650251721226:policy/AmazonEKSClusterPolicy"
+        - "arn:aws:iam::650251721226:policy/AmazonEKSServicePolicy"
+
+  # EKS Cluster
   EKSCluster:
     Type: "AWS::EKS::Cluster"
     Properties:
       Name: "MNKUserLoginsCluster"
       ResourcesVpcConfig:
         SubnetIds:
-          - subnet-0fdc7d89e2b460ee1
+          - subnet-0fdc7d89e2b460ee1  # Replace with your actual Subnet IDs
           - subnet-0b0a0583d221d317b
         SecurityGroupIds:
-          - sg-044b4b6bf5141af7f
+          - sg-044b4b6bf5141af7f   # Replace with your actual Security Group ID
+      RoleArn: !GetAtt EKSClusterRole.Arn
 
+  # ECR Repository
   UserLoginsECR:
     Type: "AWS::ECR::Repository"
     Properties:
       RepositoryName: "mnk-user-logins-repo"
+
+Outputs:
+  EKSClusterName:
+    Description: "Name of the EKS Cluster"
+    Value: !Ref EKSCluster
+
+  ECRRepositoryURI:
+    Description: "URI of the ECR Repository"
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/mnk-user-logins-repo"
