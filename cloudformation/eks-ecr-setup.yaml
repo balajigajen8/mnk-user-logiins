@@ -1,56 +1,16 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: "CloudFormation Template for EKS Cluster, ECR Repository, and IAM Roles"
-
 Resources:
-  # ECR Repository for Laravel app
-  LaravelECRRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: mnk-user-logins-repo
-
-  # EKS Cluster
   EKSCluster:
-    Type: AWS::EKS::Cluster
+    Type: "AWS::EKS::Cluster"
     Properties:
-      Name: LaravelEKSCluster
-      RoleArn: arn:aws:iam::650251721226:role/AWSServiceRoleForAmazonEKS
+      Name: "MNKUserLoginsCluster"
       ResourcesVpcConfig:
         SubnetIds:
           - subnet-0fdc7d89e2b460ee1
           - subnet-0b0a0583d221d317b
         SecurityGroupIds:
           - sg-044b4b6bf5141af7f
-        EndpointPublicAccess: true
-        EndpointPrivateAccess: false
 
-  # EKS Node Group
-  EKSNodeGroup:
-    Type: AWS::EKS::Nodegroup
+  UserLoginsECR:
+    Type: "AWS::ECR::Repository"
     Properties:
-      NodegroupName: LaravelNodeGroup
-      ClusterName: !Ref EKSCluster
-      ScalingConfig:
-        MinSize: 1
-        MaxSize: 2
-        DesiredSize: 1
-      DiskSize: 10
-      Subnets:
-        - subnet-0fdc7d89e2b460ee1
-        - subnet-0b0a0583d221d317b
-      InstanceTypes:
-        - t3.medium
-      AmiType: ami-053b12d3152c0cc71
-      NodeRole: arn:aws:iam::650251721226:role/EKSWorkerNodeRole
-
-Outputs:
-  EKSClusterName:
-    Value: !Ref EKSCluster
-    Description: "EKS Cluster Name for Laravel App"
-
-  NodeGroupName:
-    Value: !Ref EKSNodeGroup
-    Description: "Node Group Name for Laravel App"
-
-  ECRRepositoryURI:
-    Value: !GetAtt LaravelECRRepository.RepositoryUri
-    Description: "ECR Repository URI for Laravel App"
+      RepositoryName: "mnk-user-logins-repo"
