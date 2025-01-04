@@ -59,13 +59,12 @@ jobs:
 
       - name: Push Docker Image to ECR
         run: |
+          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
           echo "Pushing Docker Image: $IMAGE_URI:latest"  # Debugging log
           docker push $IMAGE_URI:latest
           echo "Pushing Docker Image: $IMAGE_URI:$TIMESTAMP"  # Debugging log
           docker push $IMAGE_URI:$TIMESTAMP
-        env:
-          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
 
   deploy-to-eks:
     name: Deploy to EKS
