@@ -8,42 +8,12 @@ Resources:
     Properties:
       RepositoryName: laravel-app
 
-  # IAM Role for EKS Cluster (Use pre-existing role ARN)
-  EKSClusterRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: "arn:aws:iam::650251721226:role/aws-service-role/eks.amazonaws.com/AWSServiceRoleForAmazonEKS"  # Reference pre-existing role by name (or ARN)
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "eks.amazonaws.com"
-            Action: "sts:AssumeRole"
-
-  # IAM Role for EKS Worker Nodes (Use pre-existing role ARN)
-  EKSWorkerNodeRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: "arn:aws:iam::650251721226:role/EKSWorkerNodeRole"  # Reference pre-existing role by name (or ARN)
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "ec2.amazonaws.com"
-            Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
-        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
-
   # EKS Cluster
   EKSCluster:
     Type: AWS::EKS::Cluster
     Properties:
-      Name: mnk-user-logins-cluster
-      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/mnk-user-logins-stack-EKSClusterRole  # Referencing role by ARN
+      Name: LaravelEKSCluster
+      RoleArn: arn:aws:iam::650251721226:role/EKSRole  # Replace with your actual EKS IAM Role ARN
       ResourcesVpcConfig:
         SubnetIds:
           - subnet-0fdc7d89e2b460ee1  # Replace with your actual Subnet IDs
@@ -53,15 +23,15 @@ Resources:
         EndpointPublicAccess: true
         EndpointPrivateAccess: false
 
-  # EKS Node Group (Use existing role for nodes)
+  # EKS Node Group
   EKSNodeGroup:
     Type: AWS::EKS::Nodegroup
     Properties:
+      NodegroupName: LaravelNodeGroup
       ClusterName: !Ref EKSCluster
-      NodegroupName: "laravel-node-group"
       ScalingConfig:
         MinSize: 1
-        MaxSize: 1
+        MaxSize: 3
         DesiredSize: 1
       DiskSize: 20
       Subnets:
@@ -70,7 +40,7 @@ Resources:
       InstanceTypes:
         - t3.medium
       AmiType: AL2_x86_64
-      NodeRole: !Sub arn:aws:iam::${AWS::AccountId}:role/mnk-user-logins-stack-EKSWorkerNodeRole  # Referencing role by ARN
+      NodeRole: arn:aws:iam::650251721226:role/EKSNodeRole  # Replace with your actual Node IAM Role ARN
 
 Outputs:
   EKSClusterName:
