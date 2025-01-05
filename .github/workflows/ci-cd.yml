@@ -29,6 +29,7 @@ jobs:
             --stack-name mnk-user-logins-stack \
             --template-file cloudformation/eks-ecr-setup.yaml \
             --capabilities CAPABILITY_NAMED_IAM
+
   build-and-push:
     name: Build and Push Docker Image to ECR
     runs-on: ubuntu-latest
@@ -50,19 +51,20 @@ jobs:
       - name: Build Docker Image
         run: |
           IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
-          DYNAMIC_NUMBER=$(date +%Y%m%d%H%M%S)  # Replace with your dynamic number logic if needed
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
           echo "Building Docker image: $IMAGE_URI:latest"
           docker build -t $IMAGE_URI:latest .
-          docker tag $IMAGE_URI:latest $IMAGE_URI:$DYNAMIC_NUMBER
-          echo "Tagged Docker image: $IMAGE_URI:$DYNAMIC_NUMBER"
+          docker tag $IMAGE_URI:latest $IMAGE_URI:$TIMESTAMP
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-          echo "DYNAMIC_NUMBER=$DYNAMIC_NUMBER" >> $GITHUB_ENV
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+
       - name: Push Docker Image to ECR
         run: |
           echo "Pushing Docker image: $IMAGE_URI:latest"
           docker push $IMAGE_URI:latest
-          echo "Pushing Docker image: $IMAGE_URI:$DYNAMIC_NUMBER"
-          docker push $IMAGE_URI:$DYNAMIC_NUMBER
+          echo "Pushing Docker image: $IMAGE_URI:$TIMESTAMP"
+          docker push $IMAGE_URI:$TIMESTAMP
+
   deploy-to-eks:
     name: Deploy to EKS
     runs-on: ubuntu-latest
@@ -79,8 +81,9 @@ jobs:
 
       - name: Deploy Laravel Application to EKS
         run: |
-          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo:latest"
-          kubectl set image deployment/mnk-user-logins mnk-user-logins=$IMAGE_URI
+          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
+          TIMESTAMP=$(echo ${{ secrets.TIMESTAMP }})
+          kubectl set image deployment/mnk-user-logins mnk-user-logins=$IMAGE_URI:$TIMESTAMP
           kubectl apply -f kubernetes/deployment.yaml
           kubectl apply -f kubernetes/services.yaml
           kubectl rollout status deployment/mnk-user-logins
