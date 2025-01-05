@@ -2,8 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mnk-user-logins
+  labels:
+    app: mnk-user-logins
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: mnk-user-logins
@@ -13,7 +15,7 @@ spec:
         app: mnk-user-logins
     spec:
       containers:
-        - name: mnk-user-logins
-          image: "${IMAGE_URI}"
-          ports:
-            - containerPort: 80
+      - name: mnk-user-logins
+        image: <IMAGE_URI>
+        ports:
+        - containerPort: 80
