@@ -29,6 +29,7 @@ jobs:
             --stack-name mnk-user-logins-stack \
             --template-file cloudformation/eks-ecr-setup.yaml \
             --capabilities CAPABILITY_NAMED_IAM
+            --parameter-overrides KeyName=mnk
 
   build-and-push:
     name: Build and Push Docker Image to ECR
