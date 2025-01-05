@@ -7,9 +7,6 @@ on:
 
 env:
   AWS_REGION: ap-south-1  # Replace with your AWS region
-  ECR_REPO_NAME: mnk-user-logins-repo
-  DEPLOYMENT_NAME: mnk-user-logins
-  SERVICE_NAME: mnk-user-logins
 
 jobs:
   deploy-infrastructure:
@@ -29,7 +26,7 @@ jobs:
       - name: Deploy CloudFormation Stack
         run: |
           aws cloudformation deploy \
-            --stack-name ${env.DEPLOYMENT_NAME}-stack \
+            --stack-name mnk-user-logins-stack \
             --template-file cloudformation/eks-ecr-setup.yaml \
             --capabilities CAPABILITY_NAMED_IAM
 
