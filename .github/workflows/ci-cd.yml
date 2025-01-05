@@ -1,4 +1,4 @@
-name: CI/CD for Laravel on EKS
+name: CI/CD Pipeline for Laravel on EKS
 
 on:
   push:
@@ -6,13 +6,11 @@ on:
       - master
 
 env:
-  AWS_REGION: ${{ secrets.REGION }}
-  ECR_REPOSITORY: mnk-user-logins-repo
-  CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+  AWS_REGION: ap-south-1  # Replace with your AWS region
 
 jobs:
   deploy-infrastructure:
-    name: Deploy Infrastructure
+    name: Deploy Infrastructure using CloudFormation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -23,68 +21,63 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy CloudFormation Stack
         run: |
           aws cloudformation deploy \
             --stack-name mnk-user-logins-stack \
             --template-file cloudformation/eks-ecr-setup.yaml \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides KeyName=mnks
-
+            --capabilities CAPABILITY_NAMED_IAM
   build-and-push:
-    name: Build and Push Docker Image
+    name: Build and Push Docker Image to ECR
     runs-on: ubuntu-latest
     needs: deploy-infrastructure
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up AWS CLI
+      - name: Configure AWS CLI
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build and Tag Docker Image
+      - name: Build Docker Image
         run: |
-          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}"
+          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          echo "IMAGE_URI=$IMAGE_URI"  # Debug: Verify IMAGE_URI before tagging
           docker build -t $IMAGE_URI:latest .
           docker tag $IMAGE_URI:latest $IMAGE_URI:$TIMESTAMP
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-
+          echo "IMAGE_URI=$IMAGE_URI:$TIMESTAMP" >> $GITHUB_ENV  # Debug: Verify tagged URI
       - name: Push Docker Image to ECR
         run: |
-          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}"
+          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          echo "Pushing Docker Image: $IMAGE_URI:latest"  # Debugging log
           docker push $IMAGE_URI:latest
+          echo "Pushing Docker Image: $IMAGE_URI:$TIMESTAMP"  # Debugging log
           docker push $IMAGE_URI:$TIMESTAMP
-
   deploy-to-eks:
-    name: Deploy Laravel Application
+    name: Deploy to EKS
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Configure kubectl
-        uses: aws-actions/eks-update-kubeconfig@v1
-        with:
-          aws-region: ${{ secrets.REGION }}
-          cluster-name: ${{ secrets.EKS_CLUSTER_NAME }}
-
-      - name: Deploy Application
+      - name: Configure kubectl using AWS CLI
         run: |
-          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}"
-          TIMESTAMP=$(echo ${{ secrets.TIMESTAMP }})
-          sed -i "s|<IMAGE_URI>|$IMAGE_URI:$TIMESTAMP|g" kubernetes/deployment.yaml
+          aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
+      - name: Deploy Laravel Application to EKS
+        run: |
+          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/mnk-user-logins-repo:latest"
+          kubectl set image deployment/mnk-user-logins mnk-user-logins=$IMAGE_URI
           kubectl apply -f kubernetes/deployment.yaml
           kubectl apply -f kubernetes/services.yaml
           kubectl rollout status deployment/mnk-user-logins
